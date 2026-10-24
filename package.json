@@ -1,0 +1,53 @@
+{
+  "name": "hellohop-mcp",
+  "version": "0.3.1",
+  "mcpName": "app.hellohop/hellohop",
+  "description": "HelloHop is an independent WhatsApp API for developers: send and receive messages, automate groups and communities, and get signed webhooks, from $25 per number per month with a free sandbox.",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "whatsapp",
+    "whatsapp-api",
+    "webhooks",
+    "groups"
+  ],
+  "license": "MIT",
+  "homepage": "https://hellohop.app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/socialgroundco/hellohop-mcp"
+  },
+  "bugs": {
+    "url": "https://github.com/socialgroundco/hellohop-mcp/issues"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "hellohop-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "type-check": "tsc -p tsconfig.check.json",
+    "test": "vitest run",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.2"
+  }
+}

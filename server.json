@@ -1,0 +1,45 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "app.hellohop/hellohop",
+  "description": "Read WhatsApp chats and groups, and send messages when allowed, through the HelloHop API.",
+  "version": "0.3.1",
+  "websiteUrl": "https://hellohop.app/docs/mcp",
+  "repository": {
+    "url": "https://github.com/socialgroundco/hellohop-mcp",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "hellohop-mcp",
+      "version": "0.3.1",
+      "runtimeHint": "npx",
+      "transport": { "type": "stdio" },
+      "environmentVariables": [
+        {
+          "name": "GATEWAY_API_TOKEN",
+          "description": "The channel's API token.",
+          "isRequired": true,
+          "isSecret": true
+        },
+        {
+          "name": "GATEWAY_CHANNEL_ID",
+          "description": "The channel ID the token belongs to.",
+          "isRequired": true
+        },
+        {
+          "name": "GATEWAY_ALLOW_SEND",
+          "description": "Set to 1 or true to enable the send tools. Off by default.",
+          "isRequired": false,
+          "default": "0"
+        },
+        {
+          "name": "GATEWAY_API_URL",
+          "description": "API base URL. Defaults to https://api.hellohop.app/v1.",
+          "isRequired": false
+        }
+      ]
+    }
+  ]
+}
