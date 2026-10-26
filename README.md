@@ -1,5 +1,7 @@
 # hellohop-mcp
 
+[![M8ven Verified](https://m8ven.ai/badge/mcp/socialgroundco-wagate-mcp-5shlsd?variant=verified&v=f374419f221171df5f6df1a2193c70d6)](https://m8ven.ai/mcp/socialgroundco-wagate-mcp-5shlsd?s=readme)
+
 HelloHop is an independent WhatsApp API for developers: send and receive messages, automate groups and communities, and get signed webhooks, from $25 per number per month with a free sandbox.
 
 This is the HelloHop MCP server. It lets an MCP client (for example Claude Desktop, Claude Code or Cursor) work with one channel of the public API: read the channel's status, the chats it has observed, recent messages, its groups and communities, and a contact. Sending (a text, media by URL, a poll, a reaction) is **off by default** and available only when you turn it on. Docs: https://hellohop.app/docs/mcp. HelloHop is not affiliated with or endorsed by WhatsApp or Meta.
