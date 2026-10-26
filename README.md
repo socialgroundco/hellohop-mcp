@@ -1,6 +1,6 @@
 # hellohop-mcp
 
-[![M8ven Verified](https://m8ven.ai/badge/mcp/socialgroundco-wagate-mcp-5shlsd?variant=verified&v=f374419f221171df5f6df1a2193c70d6)](https://m8ven.ai/mcp/socialgroundco-wagate-mcp-5shlsd?s=readme)
+[![M8ven Verified](https://m8ven.ai/badge/mcp/socialgroundco-hellohop-mcp-1ismdw?variant=verified)](https://m8ven.ai/mcp/socialgroundco-hellohop-mcp-1ismdw?s=readme)
 
 HelloHop is an independent WhatsApp API for developers: send and receive messages, automate groups and communities, and get signed webhooks, from $25 per number per month with a free sandbox.
 
