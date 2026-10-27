@@ -21,7 +21,7 @@ const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')) as {
 
 // Every authored file in the package: README, sources, tests, configs.
 // Generated and vendored trees are skipped.
-const SKIP_DIRS = new Set(['node_modules', 'dist']);
+const SKIP_DIRS = new Set(['.git', 'node_modules', 'dist']);
 const SKIP_FILES = new Set(['package-lock.json']);
 function authoredFiles(dir: string = ROOT): string[] {
   const out: string[] = [];
@@ -46,7 +46,7 @@ describe('brand constant', () => {
   it('package.json name equals the constant, and the package is public', () => {
     expect(pkg.name).toBe('hellohop-mcp');
     expect(pkg.name).toBe(BRAND.packageName);
-    expect(pkg.version).toBe('0.3.1');
+    expect(pkg.version).toBe('0.3.2');
     expect(pkg.private).toBeUndefined();
     expect(Object.keys(pkg.bin ?? {})).toEqual([BRAND.binName]);
   });
@@ -59,9 +59,9 @@ describe('brand constant', () => {
     };
     expect(lock.name).toBe('hellohop-mcp');
     expect(lock.packages['']!.name).toBe('hellohop-mcp');
-    expect(lock.version).toBe('0.3.1');
-    expect(lock.packages['']!.version).toBe('0.3.1');
-    expect(SERVER_VERSION).toBe('0.3.1');
+    expect(lock.version).toBe('0.3.2');
+    expect(lock.packages['']!.version).toBe('0.3.2');
+    expect(SERVER_VERSION).toBe('0.3.2');
   });
 
   it('the MCP server is constructed with the constant (as a client sees it)', async () => {
@@ -105,7 +105,7 @@ describe('brand constant', () => {
     expect(full.mcpName).toBe(BRAND.mcpName);
     expect(full.repository).toEqual({
       type: 'git',
-      url: 'https://github.com/socialgroundco/hellohop-mcp',
+      url: 'https://github.com/socialgroundco/hellohop-mcp.git',
     });
     expect(full.bugs).toEqual({ url: 'https://github.com/socialgroundco/hellohop-mcp/issues' });
   });
@@ -128,12 +128,12 @@ describe('registry manifest', () => {
   it('matches package.json and the registry limits', () => {
     expect(server.name).toBe('app.hellohop/hellohop');
     expect(server.name).toBe(BRAND.mcpName);
-    expect(server.version).toBe('0.3.1');
+    expect(server.version).toBe('0.3.2');
     expect(server.description.length).toBeLessThanOrEqual(100);
     const p = server.packages[0]!;
     expect(p.identifier).toBe('hellohop-mcp');
     expect(p.identifier).toBe(pkg.name);
-    expect(p.version).toBe('0.3.1');
+    expect(p.version).toBe('0.3.2');
     expect(p.transport.type).toBe('stdio');
     expect(p.environmentVariables.find((v) => v.name === ENV.token)?.isSecret).toBe(true);
     expect(p.environmentVariables.map((v) => v.name).sort()).toEqual(Object.values(ENV).sort());

@@ -2,7 +2,7 @@
 
 [![M8ven Verified](https://m8ven.ai/badge/mcp/socialgroundco-hellohop-mcp-1ismdw?variant=verified)](https://m8ven.ai/mcp/socialgroundco-hellohop-mcp-1ismdw?s=readme)
 
-HelloHop is an independent WhatsApp API for developers: send and receive messages, automate groups and communities, and get signed webhooks, from $25 per number per month with a free sandbox.
+HelloHop is an independent WhatsApp API for developers: send and receive messages, automate groups and communities, and get signed webhooks, from $25 USD per number per month with a free sandbox.
 
 This is the HelloHop MCP server. It lets an MCP client (for example Claude Desktop, Claude Code or Cursor) work with one channel of the public API: read the channel's status, the chats it has observed, recent messages, its groups and communities, and a contact. Sending (a text, media by URL, a poll, a reaction) is **off by default** and available only when you turn it on. Docs: https://hellohop.app/docs/mcp. HelloHop is not affiliated with or endorsed by WhatsApp or Meta.
 
@@ -35,6 +35,8 @@ Your MCP client starts the server for you once it is configured (see Claude Desk
 | `unreact` | `DELETE {base}/sessions/{channel}/messages/{message_id}/reaction` | Only when `GATEWAY_ALLOW_SEND=1`. No body. |
 | `delete_message` | `DELETE {base}/sessions/{channel}/messages/{message_id}` | Only when `GATEWAY_ALLOW_SEND=1`. No body. Deletes for everyone a message this number sent, within 48 hours. |
 
+`check_numbers` (always registered; it sends no message) starts a number check from 1 to 50 `numbers` (`POST {base}/sessions/{channel}/number-checks`, plus `refresh` if given), or reads one by `job_id` (`GET` the check, then a page of its rows with `offset`, `limit` and `status`). The check runs in the background on the channel's own connected non-sandbox number, spaced out, with a daily check allowance by number age, so a long list takes hours or days and it cannot be made faster. The number checker is included with every paid number. The account needs at least one active non-sandbox channel, including one covered by a paid, complimentary, promotional or admin grant. Otherwise the service returns 403 `number_checker_requires_paid_number`; a sandbox request from an eligible account returns 403 `number_checker_requires_non_sandbox_channel`. A paused check says why and resumes by itself (only `channel_down` waits for you; `account_suspended` must be resolved); a failed check reports its code and reason in `failure` (`check_failed` for an upstream failure). Read its reason before retrying. Rows carry `phone_e164`, `country`, `jid`, `lid`, `is_business` (present only when true), `verified_name`, `checked_at`, and `cached` with `age_seconds`. A check is a point-in-time answer and can be wrong or out of date; it does not promise delivery.
+
 Not exposed, on purpose: group and community invite links (an agent could paste an open invite into a chat), media download (bytes, not JSON) and webhook configuration.
 
 `get_group` returns the group's participant list, which is your own group data, so it enters the MCP client's context like any other tool result. Use it only with a client you trust with those member identities.
@@ -50,15 +52,17 @@ Every request sends `Authorization: Bearer <token>`. A successful response is re
 | Variable | Required | Meaning |
 |---|---|---|
 | `GATEWAY_API_URL` | no | Your API base. Defaults to `https://api.hellohop.app/v1`, the public API. Must be https (http is accepted only for localhost). |
-| `GATEWAY_API_TOKEN` | yes | The channel's API token. It is never logged. |
-| `GATEWAY_CHANNEL_ID` | yes | The channel ID the token belongs to. |
+| `GATEWAY_API_TOKEN` | yes | A channel key, or an account key for any number in the account. It is never logged. |
+| `GATEWAY_CHANNEL_ID` | yes | The one number this server operates on, including when using an account key. |
 | `GATEWAY_ALLOW_SEND` | no | Set to exactly `1` or `true` to enable the send tools (`send_text`, `send_media`, `send_poll`, `react`, `unreact`, `delete_message`). Any other value, or unset, leaves them off. |
+
+An account key starts with `hh_acct_` and works in `GATEWAY_API_TOKEN` without any other change. `GATEWAY_CHANNEL_ID` still selects one owned number per server. Create the key in Account in the console; it is shown once. Rotate with Regenerate, then update this configuration. The key cannot manage billing, number slots, credentials, teams, grants or company terms.
 
 If a required variable is missing the server writes the reason to stderr and exits with status 1.
 
 ## Sending is off by default
 
-Without `GATEWAY_ALLOW_SEND=1` no send tool is registered: a client cannot see or call them, and the server never contacts a send endpoint. With it on, every call sends a real WhatsApp message from the linked number (a reaction, its removal and a delete included) and counts as one against the channel's daily send cap if it has one (an operator can exempt a channel from the cap).
+Without `GATEWAY_ALLOW_SEND=1` no send tool is registered: a client cannot see or call them, and the server never contacts a send endpoint. With it on, every call sends a real WhatsApp message from the linked number (a reaction, its removal and a delete included) and counts as one against the daily message allowance (sandbox channels).
 
 ### A send can succeed without saying so
 
