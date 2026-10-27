@@ -177,7 +177,7 @@ describe('send_text description', () => {
     expect(d).toContain('read_messages');
     // S3-6: a cap-exempt channel exists (internal/session/nocap.go), so the cap
     // is conditional.
-    expect(d).toContain('daily send cap if it has one');
+    expect(d).toContain('daily message allowance (sandbox channels)');
     expect(d).not.toContain('counts against its daily send cap');
   });
 });

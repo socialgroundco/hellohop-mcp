@@ -31,4 +31,4 @@ export const BRAND = {
 } as const;
 
 // Must equal package.json `version` (asserted in test/brand.test.ts).
-export const SERVER_VERSION = '0.3.1';
+export const SERVER_VERSION = '0.3.2';

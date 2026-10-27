@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { ENV } from '../src/config.js';
-import { READ_TOOLS, SEND_TOOL, SEND_TOOLS } from '../src/server.js';
+import { CHECK_TOOLS, READ_TOOLS, SEND_TOOL, SEND_TOOLS } from '../src/server.js';
 import { startup } from '../src/startup.js';
 import { baseConfig, connect, connectServer, fakeFetch, objectOf, TOKEN } from './helpers.js';
 
@@ -34,7 +34,7 @@ describe('send opt-in gate', () => {
     const { fetch, calls } = fakeFetch({ body: { id: 'x', status: 'server_ack' } });
     const client = await connect(baseConfig({ allowSend: false }), fetch);
 
-    expect(await toolNames(client)).toEqual([...READ_TOOLS].sort());
+    expect(await toolNames(client)).toEqual([...READ_TOOLS, ...CHECK_TOOLS].sort());
     expect(await toolNames(client)).not.toContain(SEND_TOOL);
 
     // POSITIVE CONTROL FIRST: the fake fetch is wired and a read reaches it,
@@ -52,7 +52,7 @@ describe('send opt-in gate', () => {
     const { fetch, calls } = fakeFetch({ body: ack });
     const client = await connect(baseConfig({ allowSend: true }), fetch);
 
-    expect(await toolNames(client)).toEqual([...READ_TOOLS, ...SEND_TOOLS].sort());
+    expect(await toolNames(client)).toEqual([...READ_TOOLS, ...CHECK_TOOLS, ...SEND_TOOLS].sort());
 
     const result = await client.callTool({ name: SEND_TOOL, arguments: { to: '+15551234567', text: 'hello' } });
     expect(result.isError).toBeFalsy();

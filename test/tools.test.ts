@@ -7,7 +7,7 @@ import type { AddressInfo } from 'node:net';
 import { describe, expect, it } from 'vitest';
 
 import type { FetchLike } from '../src/client.js';
-import { createServer, READ_TOOLS, SEND_TOOL, SEND_TOOLS } from '../src/server.js';
+import { CHECK_TOOLS, createServer, READ_TOOLS, SEND_TOOL, SEND_TOOLS } from '../src/server.js';
 import { baseConfig, connect, connectServer, fakeFetch, objectOf, textOf, TOKEN } from './helpers.js';
 
 const BASE = 'https://api.example.test/v1/sessions/chan_1';
@@ -294,7 +294,7 @@ describe('tool annotations', () => {
     const client = await connect(baseConfig({ allowSend: true }), fetch);
     const tools = new Map((await client.listTools()).tools.map((t) => [t.name, t.annotations]));
     // Control: every tool this test speaks for is listed.
-    expect([...tools.keys()].sort()).toEqual([...READ_TOOLS, ...SEND_TOOLS].sort());
+    expect([...tools.keys()].sort()).toEqual([...READ_TOOLS, ...CHECK_TOOLS, ...SEND_TOOLS].sort());
     for (const name of READ_TOOLS) {
       const a = tools.get(name);
       expect(a?.readOnlyHint, name).toBe(true);

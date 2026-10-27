@@ -31,6 +31,13 @@ export const READ_TOOLS = [
   'list_community_subgroups',
   'get_contact',
 ] as const;
+// D484: the number checker. Not a read (it creates a background check on the
+// channel's own number) and not a send (no message leaves it), so it is neither
+// in READ_TOOLS, whose members are all read-only hints, nor behind the send
+// gate. Account and channel eligibility are enforced by the service.
+export const CHECK_TOOLS = ['check_numbers'] as const;
+export const CHECK_MAX_NUMBERS = 50;
+const CHECK_ACCURACY = 'A check is a point-in-time answer and can be wrong or out of date; it is not a guarantee that a message will be delivered.';
 export const SEND_TOOL = 'send_text';
 // Every tool that puts a message on WhatsApp. All of them are behind the gate.
 export const SEND_TOOLS = [SEND_TOOL, 'send_media', 'send_poll', 'react', 'unreact', 'delete_message'] as const;
@@ -258,6 +265,79 @@ export function createServer(config: Config, deps: ServerDeps = {}): McpServer {
     async ({ who }) => segmentRead(['contacts', who])(),
   );
 
+  // THE NUMBER CHECKER (D484). One tool, two uses: start a check from a short
+  // list, or read one by its id. The check runs in the background.
+  server.registerTool(
+    'check_numbers',
+    {
+      title: 'Check to ensure numbers are still on WhatsApp',
+      description:
+        `Check to ensure phone numbers are still on WhatsApp, using this channel's own number. Use this to keep your own contacts current: check that numbers you already have are still on WhatsApp. It is not for lists of people you have never talked to. Two uses. ` +
+        `(1) Pass \`numbers\` (1 to ${CHECK_MAX_NUMBERS} per call) to start a check: it returns a job at once and keeps running ` +
+        'in the background. (2) Pass `job_id` to read that job: its state, progress, allowance, estimate, pause reason, ' +
+        'and a page of result rows. Each row has status (registered, not_registered, invalid, error), phone_e164, ' +
+        'country, jid, lid, is_business and verified_name (is_business appears only when true; omitted means not ' +
+        'known to be a verified business, never "personal"), checked_at, and cached with age_seconds. ' +
+        'Checks run in the background and are spaced out, and each number has a daily check allowance, so a large list can take hours or days. ' +
+        'A paused job says why in pause and resumes by itself at pause.resume_at, so do not poll it in a loop and do not start the same list again; only channel_down waits for you. ' +
+        'A failed job reports its code and reason in failure (check_failed for an upstream failure). ' +
+        'Numbers checked recently are answered from a cache (7 days if on WhatsApp, 24 hours if not) without asking WhatsApp or using the allowance; ' +
+        'set refresh to ask WhatsApp again. There is no way to make a check faster. The channel must be connected and non-sandbox. ' +
+        'ACCURACY: a check is a point-in-time answer and can be wrong or out of date by the time you use it; ' +
+        'it is not a guarantee that a message will be delivered. ' +
+        'The number checker is included with every paid number. The account needs at least one active non-sandbox channel, ' +
+        'including paid, complimentary, promotional or admin grants. Without one, the service returns 403 number_checker_requires_paid_number. ' +
+        'A sandbox request from an eligible account returns 403 number_checker_requires_non_sandbox_channel.',
+      inputSchema: {
+        numbers: z
+          .array(z.string().min(1).max(64))
+          .min(1)
+          .max(CHECK_MAX_NUMBERS)
+          .optional()
+          .describe(
+            `Phone numbers to check, 1 to ${CHECK_MAX_NUMBERS}, as you have them: a leading +, spaces and dashes are fine. Start with the country code. Omit when reading a job.`,
+          ),
+        job_id: z
+          .string()
+          .regex(/^nck_[0-9a-f]{24}$/)
+          .optional()
+          .describe('The id of a job started earlier (nck_ then 24 hex characters). Pass this instead of numbers to read it.'),
+        refresh: z.boolean().optional().describe('With numbers: ask WhatsApp again even for numbers answered recently. Default false.'),
+        offset: z.number().int().min(0).max(999999).optional().describe('With job_id: result rows to skip. Default 0.'),
+        limit: z.number().int().min(1).max(2000).optional().describe('With job_id: result rows to return, 1 to 2000. Default 500.'),
+        status: z
+          .array(z.enum(['pending', 'registered', 'not_registered', 'invalid', 'error']))
+          .min(1)
+          .optional()
+          .describe('With job_id: only rows with these statuses.'),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+    },
+    async ({ numbers, job_id, refresh, offset, limit, status }) => {
+      if ((numbers === undefined) === (job_id === undefined)) {
+        return fail({ status: null, code: null, error: 'pass exactly one of numbers (start a check) or job_id (read one)' });
+      }
+      if (numbers !== undefined) {
+        const body: { numbers: string[]; refresh?: boolean } = { numbers };
+        if (refresh !== undefined) body.refresh = refresh;
+        const created = await client.request('POST', client.sessionUrl('number-checks'), body);
+        if (!created.ok) return toResult(created);
+        return ok({ ...(created.body as Record<string, unknown>), accuracy: CHECK_ACCURACY });
+      }
+      const job = await client.request('GET', client.sessionUrl('number-checks', job_id!));
+      if (!job.ok) return toResult(job);
+      const query = new URLSearchParams();
+      if (offset !== undefined) query.set('offset', String(offset));
+      if (limit !== undefined) query.set('limit', String(limit));
+      if (status !== undefined) query.set('status', [...new Set(status)].join(','));
+      const qs = query.toString();
+      const rows = await client.request('GET', client.sessionUrl('number-checks', job_id!, 'results') + (qs === '' ? '' : `?${qs}`));
+      if (!rows.ok) return toResult(rows);
+      const page = rows.body as { results?: unknown; total?: unknown };
+      return ok({ job: job.body, results: page.results ?? [], total: page.total ?? 0, accuracy: CHECK_ACCURACY });
+    },
+  );
+
   // THE SEND GATE. The only place a send tool is registered.
   if (config.allowSend) {
     server.registerTool(
@@ -266,7 +346,7 @@ export function createServer(config: Config, deps: ServerDeps = {}): McpServer {
         title: 'Send a text message',
         description:
           'Send a WhatsApp text message from this channel. This sends a real message from a real number ' +
-          'to a real person, and counts against the channel\'s daily send cap if it has one. ' +
+          'to a real person, and counts against the daily message allowance (sandbox channels). ' +
           'Nothing is retried automatically, and you must not retry either when delivery is unknown. ' +
           'If the result has delivery "unknown", the message MAY ALREADY HAVE BEEN SENT: do NOT send it again. ' +
           'That happens when no response arrived, when the result has ambiguous true, and on a 502 or 504 ' +
@@ -307,7 +387,7 @@ export function createServer(config: Config, deps: ServerDeps = {}): McpServer {
         description:
           'Send media from this channel. The gateway FETCHES the file from `url` (http or https, a public address, ' +
           'at most 3 redirects) and sends it as a real message to a real person; it counts as one message against ' +
-          'the daily send cap, whatever its size. Limits: image JPEG/PNG 5 MiB; video MP4/3GPP 16 MiB; audio ' +
+          'the daily message allowance (sandbox channels), whatever its size. Limits: image JPEG/PNG 5 MiB; video MP4/3GPP 16 MiB; audio ' +
           'AAC/MP4/MP3/AMR/Ogg 16 MiB; voice Ogg Opus 16 MiB; document any type 32 MiB. The type is read from the ' +
           'file, not the URL. A 502 with code media_upload_failed means nothing was sent and a retry is safe; a 429 ' +
           'gateway_busy (bound "media") means wait retry_after seconds. ' +
@@ -338,7 +418,7 @@ export function createServer(config: Config, deps: ServerDeps = {}): McpServer {
         description:
           'Send a poll from this channel: a question and 2 to 12 different options, one answer unless multiple is ' +
           'true. Votes come back to the channel\'s webhook as poll_vote messages, by option name, and appear in ' +
-          'read_messages. Counts as one message against the daily send cap. ' +
+          'read_messages. Counts as one message against the daily message allowance (sandbox channels). ' +
           SEND_WARNING,
         inputSchema: {
           to,
@@ -367,7 +447,7 @@ export function createServer(config: Config, deps: ServerDeps = {}): McpServer {
         description:
           'React with one emoji to a message this channel sent or received; a new reaction replaces this ' +
           'channel\'s earlier one. A message the channel has no record of answers 404 message_not_found. ' +
-          'A reaction is a message on WhatsApp and counts as one against the daily send cap. ' +
+          'A reaction is a message on WhatsApp and counts as one against the daily message allowance (sandbox channels). ' +
           SEND_WARNING,
         inputSchema: { message_id: messageId, emoji: z.string().min(1).describe('One emoji.') },
         annotations: sendAnnotations,
@@ -388,7 +468,7 @@ export function createServer(config: Config, deps: ServerDeps = {}): McpServer {
         title: 'Remove a reaction',
         description:
           'Remove this channel\'s reaction to a message. WhatsApp sends the removal as a message, so it counts ' +
-          'as one against the daily send cap. ' +
+          'as one against the daily message allowance (sandbox channels). ' +
           SEND_WARNING,
         inputSchema: { message_id: messageId },
         annotations: sendAnnotations,
@@ -408,7 +488,7 @@ export function createServer(config: Config, deps: ServerDeps = {}): McpServer {
           'Delete for everyone a message this channel\'s number sent, within 48 hours of sending. Someone else\'s ' +
           'message answers 403 not_own_message; an older one 409 revoke_window_passed; one the channel has no record ' +
           'of 404 message_not_found. Deleting a message already deleted answers status already_revoked and sends ' +
-          'nothing. The delete is a message on WhatsApp and counts as one against the daily send cap. ' +
+          'nothing. The delete is a message on WhatsApp and counts as one against the daily message allowance (sandbox channels). ' +
           SEND_WARNING,
         inputSchema: { message_id: messageId },
         annotations: sendAnnotations,

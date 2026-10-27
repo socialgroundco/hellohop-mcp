@@ -1,8 +1,8 @@
 {
   "name": "hellohop-mcp",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "mcpName": "app.hellohop/hellohop",
-  "description": "HelloHop is an independent WhatsApp API for developers: send and receive messages, automate groups and communities, and get signed webhooks, from $25 per number per month with a free sandbox.",
+  "description": "HelloHop is an independent WhatsApp API for developers: send and receive messages, automate groups and communities, and get signed webhooks, from $25 USD per number per month with a free sandbox.",
   "keywords": [
     "mcp",
     "model-context-protocol",
@@ -15,7 +15,7 @@
   "homepage": "https://hellohop.app",
   "repository": {
     "type": "git",
-    "url": "https://github.com/socialgroundco/hellohop-mcp"
+    "url": "https://github.com/socialgroundco/hellohop-mcp.git"
   },
   "bugs": {
     "url": "https://github.com/socialgroundco/hellohop-mcp/issues"
@@ -42,7 +42,7 @@
     "prepack": "npm run build"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.30.1",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "zod": "^3.25.76"
   },
   "devDependencies": {

@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "app.hellohop/hellohop",
   "description": "Read WhatsApp chats and groups, and send messages when allowed, through the HelloHop API.",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "websiteUrl": "https://hellohop.app/docs/mcp",
   "repository": {
     "url": "https://github.com/socialgroundco/hellohop-mcp",
@@ -13,7 +13,7 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "hellohop-mcp",
-      "version": "0.3.1",
+      "version": "0.3.2",
       "runtimeHint": "npx",
       "transport": { "type": "stdio" },
       "environmentVariables": [
