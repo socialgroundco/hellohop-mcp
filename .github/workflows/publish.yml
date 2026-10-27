@@ -7,6 +7,7 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: npm-publish
     permissions:
       id-token: write
       contents: read
@@ -18,11 +19,12 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '22'
+          node-version: '22.23.4'
+          package-manager-cache: false
           registry-url: https://registry.npmjs.org
       - name: Ensure npm supports trusted publishing
         run: |
-          npm install -g npm@^11.5.1
+          npm install -g npm@11.21.1
           npm --version
           node --input-type=module <<'NODE'
           import { execFileSync } from 'node:child_process';
