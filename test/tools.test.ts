@@ -63,7 +63,7 @@ describe('channel_status', () => {
 describe('read_messages', () => {
   it('sends the chat JID LITERALLY in the path: `@` unencoded, no `%` anywhere', async () => {
     // The public edge matches the raw path and refuses any `%`
-    // (internal/edge/policy.go opAllowed), so encodeURIComponent's
+    // so encodeURIComponent's
     // `15551234567%40s.whatsapp.net` would be a 404 there.
     const body = { messages: [{ id: 'M1', text: 'hi' }], source: 'log' };
     const { fetch, calls } = fakeFetch({ body });

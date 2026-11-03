@@ -43,7 +43,7 @@ export const DEFAULT_TIMEOUT_MS = 30_000;
 // The chat segment is sent LITERALLY, not percent-encoded.
 //
 // The public edge matches the RAW request path and refuses any path that
-// contains `%` (internal/edge/policy.go opAllowed). encodeURIComponent would
+// contains `%`. encodeURIComponent would
 // turn `123@s.whatsapp.net` into `123%40s.whatsapp.net`, which the edge
 // refuses with a 404. So instead of encoding, this allows only characters that
 // are legal in a path segment as they stand, and refuses everything else
