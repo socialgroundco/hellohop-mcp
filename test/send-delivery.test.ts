@@ -13,13 +13,13 @@ import { baseConfig, connect, fakeFetch, objectOf, textOf } from './helpers.js';
 
 const SEND = { to: '+15551234567', text: 'hello' };
 
-// LITERAL, from internal/edge/public_unconfirmed_test.go
+// LITERAL, from the API's own unconfirmed-send tests
 // (TestTheEdgeRelaysAnUnconfirmedSendUnchanged): the body core renders for an
 // unconfirmed send, which the edge relays unchanged with core's 504.
 const UNCONFIRMED_504 =
   '{"error":"send text: send unconfirmed (logged as ambiguous:0f3a9c): timed out","code":"send_unconfirmed","ambiguous":true,"id":"ambiguous:0f3a9c"}';
 
-// The edge's own 502 when the core did not answer (internal/edge/passthrough.go
+// The edge's own 502 when the core did not answer (API relay
 // writeCode, Label from cmd/.../main.go's publicPass). The label is the working
 // product name, which test/brand.test.ts refuses in this package, so it is built
 // from parts.

@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import { ConfigError, ENV, loadConfig, LOOPBACK_HOSTS } from '../src/config.js';
 import { startup } from '../src/startup.js';
-import { connect, fakeFetch, TOKEN } from './helpers.js';
+import { connect, connectServer, fakeFetch, objectOf, TOKEN } from './helpers.js';
 
 const GOOD = {
   [ENV.apiUrl]: 'https://api.example.test/v1',
@@ -33,21 +33,14 @@ describe('loadConfig', () => {
     expect(cfg).toEqual({ apiUrl: 'https://api.example.test/v1', token: TOKEN, channel: 'chan_1', allowSend: false });
   });
 
-  for (const name of [ENV.token, ENV.channel]) {
-    it(`fails when ${name} is missing or blank, naming it`, () => {
+  it('accepts missing or blank credentials so installation can start token-free', () => {
+    for (const name of [ENV.token, ENV.channel]) {
       for (const value of [undefined, '', '   ']) {
-        const problems = problemsFor({ ...GOOD, [name]: value });
-        expect(problems).toHaveLength(1);
-        expect(problems[0]).toContain(name);
+        expect(problemsFor({ ...GOOD, [name]: value })).toEqual([]);
+        expect(loadConfig({ ...GOOD, [name]: value })[name === ENV.token ? 'token' : 'channel']).toBe('');
       }
-    });
-  }
-
-  it('reports every missing variable at once', () => {
-    const problems = problemsFor({});
-    expect(problems.join(' ')).not.toContain(ENV.apiUrl);
-    expect(problems.join(' ')).toContain(ENV.token);
-    expect(problems.join(' ')).toContain(ENV.channel);
+    }
+    expect(loadConfig({})).toMatchObject({ token: '', channel: '', allowSend: false });
   });
 
   it('requires https except on loopback', () => {
@@ -105,16 +98,45 @@ describe('loadConfig', () => {
 });
 
 describe('startup', () => {
-  it('fails clearly with missing env, logging the variable names and never the token', () => {
+  it('starts token-free and every tool returns configuration guidance without HTTP', async () => {
+    const args: Record<string, Record<string, unknown>> = {
+      channel_status: { include_safety: true }, list_chats: {}, read_messages: { chat: '123@s.whatsapp.net' },
+      list_groups: {}, get_group: { group: '123@g.us' }, get_community: { community: '123@g.us' },
+      list_community_subgroups: { community: '123@g.us' }, get_contact: { who: '123@s.whatsapp.net' },
+      check_numbers: { numbers: ['+66900000000'] }, send_text: { to: '+66900000000', text: 'test' },
+      send_media: { kind: 'image', to: '+66900000000', url: 'https://example.test/image.png' },
+      send_poll: { to: '+66900000000', question: 'test?', options: ['yes', 'no'] },
+      react: { message_id: 'msg1', emoji: '👍' }, unreact: { message_id: 'msg1' }, delete_message: { message_id: 'msg1' },
+    };
+    for (const env of [{}, { [ENV.token]: TOKEN }, { [ENV.channel]: 'chan_1' }]) {
+      const lines: string[] = [];
+      const { fetch, calls } = fakeFetch();
+      const server = startup({ ...env, [ENV.allowSend]: '1' }, { log: (l) => lines.push(l), fetch });
+      expect(server).not.toBeNull();
+      const client = await connectServer(server!);
+      try {
+        const tools = (await client.listTools()).tools;
+        expect(tools.map(t => t.name).sort()).toEqual(Object.keys(args).sort());
+        for (const tool of tools) {
+          const result = await client.callTool({ name: tool.name, arguments: args[tool.name] });
+          expect(result.isError, tool.name).toBe(true);
+          expect(objectOf(result), tool.name).toMatchObject({ code: 'not_configured', status: null });
+          expect(objectOf(result).error, tool.name).toContain('https://hellohop.app');
+          expect(objectOf(result).error, tool.name).toContain('GATEWAY_API_TOKEN');
+          expect(objectOf(result).error, tool.name).toContain('GATEWAY_CHANNEL_ID');
+          expect(objectOf(result)).not.toHaveProperty('delivery');
+        }
+        expect(calls).toHaveLength(0);
+        expect(lines.join('\n')).not.toContain(TOKEN);
+      } finally { await client.close(); await server!.close(); }
+    }
+  });
+
+  it('still refuses malformed configuration without echoing values', () => {
     const lines: string[] = [];
-    const { fetch, calls } = fakeFetch();
-    const server = startup({ [ENV.token]: TOKEN }, { log: (l) => lines.push(l), fetch });
-    expect(server).toBeNull();
-    const out = lines.join('\n');
-    expect(out).toContain(ENV.apiUrl);
-    expect(out).toContain(ENV.channel);
-    expect(out).not.toContain(TOKEN);
-    expect(calls).toHaveLength(0);
+    expect(startup({ ...GOOD, [ENV.apiUrl]: 'http://remote.example.test' }, { log: l => lines.push(l) })).toBeNull();
+    expect(lines.join('\n')).toContain(ENV.apiUrl);
+    expect(lines.join('\n')).not.toContain(TOKEN);
   });
 
   it('logs a ready line on success that states the send mode and never the token', () => {

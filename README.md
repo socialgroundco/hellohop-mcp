@@ -56,9 +56,11 @@ Every request sends `Authorization: Bearer <token>`. A successful response is re
 | `GATEWAY_CHANNEL_ID` | yes | The one number this server operates on, including when using an account key. |
 | `GATEWAY_ALLOW_SEND` | no | Set to exactly `1` or `true` to enable the send tools (`send_text`, `send_media`, `send_poll`, `react`, `unreact`, `delete_message`). Any other value, or unset, leaves them off. |
 
+*Required before tool use, not installation: the server can start without a token or channel ID.*
+
 An account key starts with `hh_acct_` and works in `GATEWAY_API_TOKEN` without any other change. `GATEWAY_CHANNEL_ID` still selects one owned number per server. Create the key in Account in the console; it is shown once. Rotate with Regenerate, then update this configuration. The key cannot manage billing, number slots, credentials, teams, grants or company terms.
 
-If a required variable is missing the server writes the reason to stderr and exits with status 1.
+The server starts without a token or channel ID so you can install first. Until both are set, every tool returns `not_configured` with a link to get a free sandbox token at https://hellohop.app, without making an API request. Set both variables and restart the agent. Malformed nonempty settings still fail at startup. Number checks require an eligible account and a non-sandbox channel.
 
 ## Sending is off by default
 

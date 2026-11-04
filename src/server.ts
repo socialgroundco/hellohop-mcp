@@ -58,6 +58,7 @@ export const MEDIA_KINDS = ['image', 'video', 'audio', 'voice', 'document'] as c
 // WhatsApp's media servers failed before any message existed. That one is safe
 // to retry, and calling it unknown would stop an agent from a safe retry.
 export function sendDeliveryUnknown(res: ApiFailure): boolean {
+  if (res.code === 'not_configured') return false;
   if (res.status === null || res.ambiguous === true) return true;
   if (res.status === 502 && res.code === 'media_upload_failed') return false;
   return res.status === 502 || res.status === 504 || (res.status >= 200 && res.status < 300);

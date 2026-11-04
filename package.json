@@ -1,6 +1,6 @@
 {
   "name": "hellohop-mcp",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "mcpName": "app.hellohop/hellohop",
   "description": "HelloHop is an independent WhatsApp API for developers: send and receive messages, automate groups and communities, and get signed webhooks, from $25 USD per number per month with a free sandbox.",
   "keywords": [

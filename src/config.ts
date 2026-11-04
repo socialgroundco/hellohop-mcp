@@ -76,16 +76,12 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
   }
 
   const token = (env[ENV.token] ?? '').trim();
-  if (token === '') {
-    problems.push(`${ENV.token} is not set`);
-  } else if (!TOKEN_RE.test(token)) {
+  if (token !== '' && !TOKEN_RE.test(token)) {
     problems.push(`${ENV.token} contains characters that cannot be sent in a header`);
   }
 
   const channel = (env[ENV.channel] ?? '').trim();
-  if (channel === '') {
-    problems.push(`${ENV.channel} is not set`);
-  } else if (!CHANNEL_RE.test(channel)) {
+  if (channel !== '' && !CHANNEL_RE.test(channel)) {
     problems.push(`${ENV.channel} may contain only letters, digits, "_" and "-"`);
   }
 

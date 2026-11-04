@@ -1,5 +1,5 @@
 // Startup, separated from the entrypoint so it can be tested without a
-// process: read the environment, fail clearly if it is incomplete, and build
+// process: read the environment, start without credentials, reject malformed values, and build
 // the server. Nothing written here ever contains the token.
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -32,6 +32,10 @@ export function startup(env: Record<string, string | undefined>, deps: StartupDe
       return null;
     }
     throw err;
+  }
+  if (config.token === '' || config.channel === '') {
+    deps.log(`${BRAND.packageName}: not configured; get a free sandbox token at https://hellohop.app, set ${ENV.token} and ${ENV.channel}, then restart.`);
+    return createServer(config, { fetch: deps.fetch });
   }
   // The ORIGIN only: config accepts a path, and a path can carry a credential
   // (a key segment, or the token itself pasted there), which this line would

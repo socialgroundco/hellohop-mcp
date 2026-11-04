@@ -107,6 +107,15 @@ export class GatewayClient {
   }
 
   async request(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, body?: unknown): Promise<ApiResult> {
+    // Installation can start without credentials. No request, including a
+    // send, may leave this boundary until both channel credentials exist.
+    if (this.config.token === '' || this.config.channel === '') {
+      return {
+        ok: false, status: null, code: 'not_configured',
+        error: `HelloHop is not configured: get a free sandbox token at https://hellohop.app, ` +
+          `set ${ENV.token} and ${ENV.channel}, then restart the agent. Number checks require a non-sandbox channel.`,
+      };
+    }
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.config.token}`,
       Accept: 'application/json',

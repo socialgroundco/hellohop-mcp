@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.4
+
+- The server now starts without `GATEWAY_API_TOKEN` or `GATEWAY_CHANNEL_ID`. Until both are set, tools return `not_configured` without making an API request. Malformed nonempty settings still fail at startup.
+
 ## 0.3.3
 
 - Published package no longer ships source maps (dist/*.js only). Removed an internal path reference from a source comment. No behaviour change.

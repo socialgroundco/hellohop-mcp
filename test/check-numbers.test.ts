@@ -147,6 +147,24 @@ describe('check_numbers', () => {
     expect(objectOf(r2)).toMatchObject({ status: 409, code: 'whatsapp_disconnected' });
   });
 
+  it('maps sandbox-only 403 to the decoded D484 entitlement code', async () => {
+    // Known-good create FIRST: a server which refuses everything cannot pass.
+    const { fetch, calls } = fakeFetch(
+      { status: 201, body: job },
+      { status: 403, body: { code: 'number_checker_requires_paid_number', error: 'An active non-sandbox channel is required.' } },
+      { status: 403, body: { code: 'number_checker_requires_non_sandbox_channel', error: 'Use a non-sandbox channel.' } },
+    );
+    const client = await connect(baseConfig({ allowSend: false }), fetch);
+    const request = { name: 'check_numbers', arguments: { numbers: ['+66900000000'] } };
+    expect(objectOf(await client.callTool(request))).toMatchObject({ id: JOB, state: 'running' });
+    for (const code of ['number_checker_requires_paid_number', 'number_checker_requires_non_sandbox_channel']) {
+      const result = await client.callTool(request);
+      expect(result.isError).toBe(true);
+      expect(objectOf(result)).toMatchObject({ status: 403, code });
+    }
+    expect(calls).toHaveLength(3);
+  });
+
   it('exposes no speed, protection or pacing setting', async () => {
     const { fetch } = fakeFetch();
     const client = await connect(baseConfig(), fetch);

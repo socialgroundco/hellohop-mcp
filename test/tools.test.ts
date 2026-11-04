@@ -30,7 +30,7 @@ describe('list_chats', () => {
     expect(result.isError).toBeFalsy();
     expect(objectOf(result)).toEqual(body);
     expect(calls).toHaveLength(1);
-    // The edge drops query strings (internal/edge/passthrough.go relay), so
+    // The edge drops query strings (API relay), so
     // none is sent: a `limit` here would look honoured and never be.
     expectReadRequest(calls[0]!, `${BASE}/chats`);
   });
