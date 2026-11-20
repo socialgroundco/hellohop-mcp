@@ -1,8 +1,7 @@
+[![Listed on mcpservers.org](https://mcpservers.org/badge.svg)](https://mcpservers.org/servers/socialgroundco/hellohop-mcp)
 # hellohop-mcp
 
-[![M8ven Verified](https://m8ven.ai/badge/mcp/socialgroundco-hellohop-mcp-1ismdw?variant=verified)](https://m8ven.ai/mcp/socialgroundco-hellohop-mcp-1ismdw?s=readme)
-
-HelloHop is an independent WhatsApp API for developers: send and receive messages, automate groups and communities, and get signed webhooks, from $25 USD per number per month with a free sandbox.
+HelloHop is an independent WhatsApp API for developers: send and receive messages, automate groups and communities, and get signed webhooks.
 
 This is the HelloHop MCP server. It lets an MCP client (for example Claude Desktop, Claude Code or Cursor) work with one channel of the public API: read the channel's status, the chats it has observed, recent messages, its groups and communities, and a contact. Sending (a text, media by URL, a poll, a reaction) is **off by default** and available only when you turn it on. Docs: https://hellohop.app/docs/mcp. HelloHop is not affiliated with or endorsed by WhatsApp or Meta.
 
@@ -34,6 +33,10 @@ Your MCP client starts the server for you once it is configured (see Claude Desk
 | `react` | `PUT {base}/sessions/{channel}/messages/{message_id}/reaction` | Only when `GATEWAY_ALLOW_SEND=1`. Body `{emoji}`. |
 | `unreact` | `DELETE {base}/sessions/{channel}/messages/{message_id}/reaction` | Only when `GATEWAY_ALLOW_SEND=1`. No body. |
 | `delete_message` | `DELETE {base}/sessions/{channel}/messages/{message_id}` | Only when `GATEWAY_ALLOW_SEND=1`. No body. Deletes for everyone a message this number sent, within 48 hours. |
+
+### Capabilities
+
+`channel_status` preserves the session's `capabilities` array, either directly or under `session` when `include_safety` is true. Values are `messages`, `groups`, `communities`, `contacts`, `lid_lookup` and `number_checks`. A fresh connected, logged-in number with a known linked identity reports the first four; the last two also require the existing `lid_lookup` and `number_checker_eligible` flags. Unknown, unlinked, disconnected or stale observations return `[]`, never `null`. A complimentary number whose current grant does not cover it also reports `[]`. This is a feature snapshot; each operation still applies its current access checks and allowances. MCP send tools also require the explicit send configuration described below.
 
 `check_numbers` (always registered; it sends no message) starts a number check from 1 to 50 `numbers` (`POST {base}/sessions/{channel}/number-checks`, plus `refresh` if given), or reads one by `job_id` (`GET` the check, then a page of its rows with `offset`, `limit` and `status`). The check runs in the background on the channel's own connected non-sandbox number, spaced out, with a daily check allowance by number age, so a long list takes hours or days and it cannot be made faster. The number checker is included with every paid number. The account needs at least one active non-sandbox channel, including one covered by a paid, complimentary, promotional or admin grant. Otherwise the service returns 403 `number_checker_requires_paid_number`; a sandbox request from an eligible account returns 403 `number_checker_requires_non_sandbox_channel`. A paused check says why and resumes by itself (only `channel_down` waits for you; `account_suspended` must be resolved); a failed check reports its code and reason in `failure` (`check_failed` for an upstream failure). Read its reason before retrying. Rows carry `phone_e164`, `country`, `jid`, `lid`, `is_business` (present only when true), `verified_name`, `checked_at`, and `cached` with `age_seconds`. A check is a point-in-time answer and can be wrong or out of date; it does not promise delivery.
 

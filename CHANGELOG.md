@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0
+
+- Upgrade Zod to ^4.6.6 (GHSA-mrhx-c7xc-m3w5) and use its native v4 schemas while preserving tool input schemas.
+- Credential-free startup: the server now starts without `GATEWAY_API_TOKEN` and `GATEWAY_CHANNEL_ID`, so directories and agents can inspect it before anyone configures a channel. Tools that need them return the existing `not_configured` refusal without making an API request. Malformed nonempty settings still fail at startup.
+
 ## 0.3.4
 
 - The server now starts without `GATEWAY_API_TOKEN` or `GATEWAY_CHANNEL_ID`. Until both are set, tools return `not_configured` without making an API request. Malformed nonempty settings still fail at startup.

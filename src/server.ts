@@ -107,6 +107,12 @@ const SEND_WARNING =
   'If the result has delivery "unknown", the message MAY ALREADY HAVE BEEN SENT: do NOT send it again; ' +
   'check read_messages for that chat instead. On a 429 nothing was sent: wait retry_after seconds before any new attempt.';
 
+// v3 advertised closed objects while stripping unknown fields at runtime.
+// Keep that public schema contract without making v4 parsing strict.
+function toolInput<Shape extends z.ZodRawShape>(shape: Shape) {
+  return z.object(shape).meta({ additionalProperties: false });
+}
+
 export function createServer(config: Config, deps: ServerDeps = {}): McpServer {
   const client = new GatewayClient(config, deps.fetch, deps.timeoutMs);
   const server = new McpServer({ name: BRAND.packageName, version: SERVER_VERSION });
@@ -119,12 +125,12 @@ export function createServer(config: Config, deps: ServerDeps = {}): McpServer {
       description:
         `Read this channel's state from ${BRAND.productName}: whether the number is linked and connected. ` +
         'Set include_safety to also read the channel\'s health readings and overall verdict.',
-      inputSchema: {
+      inputSchema: toolInput({
         include_safety: z
           .boolean()
           .optional()
           .describe('Also read the safety readings (a second GET request). Default false.'),
-      },
+      }),
       annotations: readOnly,
     },
     async ({ include_safety }) => {
@@ -163,7 +169,7 @@ export function createServer(config: Config, deps: ServerDeps = {}): McpServer {
         '`before` to read the next, older page. Only messages captured while the channel was connected are present, ' +
         'plus history the phone sent if the channel stores it (`source: history_sync`). Every page read is recorded ' +
         'in the channel\'s API access records.',
-      inputSchema: {
+      inputSchema: toolInput({
         chat: z
           .string()
           .min(1)
@@ -177,7 +183,7 @@ export function createServer(config: Config, deps: ServerDeps = {}): McpServer {
           .regex(/^[A-Za-z0-9_-]{1,256}$/)
           .optional()
           .describe('The next_before value of a previous page, exactly as returned.'),
-      },
+      }),
       annotations: readOnly,
     },
     async ({ chat, limit, before }) => {
@@ -225,7 +231,7 @@ export function createServer(config: Config, deps: ServerDeps = {}): McpServer {
     {
       title: 'Get a group',
       description: 'Read one group: its subject, description, settings and participants. ' + askWhatsApp,
-      inputSchema: { group: jidArg('group', '120363000000000001@g.us') },
+      inputSchema: toolInput({ group: jidArg('group', '120363000000000001@g.us') }),
       annotations: readOnly,
     },
     async ({ group }) => segmentRead(['groups', group])(),
@@ -236,7 +242,7 @@ export function createServer(config: Config, deps: ServerDeps = {}): McpServer {
     {
       title: 'Get a community',
       description: 'Read one community this channel\'s number belongs to. ' + askWhatsApp,
-      inputSchema: { community: jidArg('community', '120363000000000002@g.us') },
+      inputSchema: toolInput({ community: jidArg('community', '120363000000000002@g.us') }),
       annotations: readOnly,
     },
     async ({ community }) => segmentRead(['communities', community])(),
@@ -247,7 +253,7 @@ export function createServer(config: Config, deps: ServerDeps = {}): McpServer {
     {
       title: 'List a community\'s subgroups',
       description: 'List the groups linked to a community. ' + askWhatsApp,
-      inputSchema: { community: jidArg('community', '120363000000000002@g.us') },
+      inputSchema: toolInput({ community: jidArg('community', '120363000000000002@g.us') }),
       annotations: readOnly,
     },
     async ({ community }) => segmentRead(['communities', community, 'subgroups'])(),
@@ -260,7 +266,7 @@ export function createServer(config: Config, deps: ServerDeps = {}): McpServer {
       description:
         'Read this channel\'s stored entry for one contact (the names its contact store holds); this does not ask WhatsApp. ' +
         '`who` is a phone JID such as 15551234567@s.whatsapp.net, or a LID.',
-      inputSchema: { who: z.string().min(1).describe('The contact: a user JID or a LID.') },
+      inputSchema: toolInput({ who: z.string().min(1).describe('The contact: a user JID or a LID.') }),
       annotations: readOnly,
     },
     async ({ who }) => segmentRead(['contacts', who])(),
@@ -289,7 +295,7 @@ export function createServer(config: Config, deps: ServerDeps = {}): McpServer {
         'The number checker is included with every paid number. The account needs at least one active non-sandbox channel, ' +
         'including paid, complimentary, promotional or admin grants. Without one, the service returns 403 number_checker_requires_paid_number. ' +
         'A sandbox request from an eligible account returns 403 number_checker_requires_non_sandbox_channel.',
-      inputSchema: {
+      inputSchema: toolInput({
         numbers: z
           .array(z.string().min(1).max(64))
           .min(1)
@@ -311,7 +317,7 @@ export function createServer(config: Config, deps: ServerDeps = {}): McpServer {
           .min(1)
           .optional()
           .describe('With job_id: only rows with these statuses.'),
-      },
+      }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
     },
     async ({ numbers, job_id, refresh, offset, limit, status }) => {
@@ -354,7 +360,7 @@ export function createServer(config: Config, deps: ServerDeps = {}): McpServer {
           'response: a 502 or 504 is a response, and it can still mean the message was sent. ' +
           'Instead, check read_messages for that chat, and look for the returned id when there is one. ' +
           'On a 429, the message was not sent: wait retry_after seconds before any new attempt.',
-        inputSchema: {
+        inputSchema: toolInput({
           to: z
             .string()
             .min(1)
@@ -365,7 +371,7 @@ export function createServer(config: Config, deps: ServerDeps = {}): McpServer {
             .min(1)
             .optional()
             .describe('Optional. The ID of a message this channel has in the same chat, to reply to it.'),
-        },
+        }),
         annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
       },
       async ({ to, text, quoted }) => {
@@ -393,14 +399,17 @@ export function createServer(config: Config, deps: ServerDeps = {}): McpServer {
           'file, not the URL. A 502 with code media_upload_failed means nothing was sent and a retry is safe; a 429 ' +
           'gateway_busy (bound "media") means wait retry_after seconds. ' +
           SEND_WARNING,
-        inputSchema: {
+        inputSchema: toolInput({
           kind: z.enum(MEDIA_KINDS).describe('What to send it as.'),
           to,
-          url: z.string().url().describe('Where the gateway fetches the file.'),
+          // v3 validated with WHATWG URL but passed the original value to the API.
+          // v4's URL format trims/rewrites it, so retain validation without transformation.
+          url: z.string().refine(value => URL.canParse(value), 'Invalid url').meta({ format: 'uri' })
+            .describe('Where the gateway fetches the file.'),
           caption: z.string().min(1).optional().describe('Optional, for image, video and document only.'),
           filename: z.string().min(1).optional().describe('Optional, for document only: the name the recipient sees.'),
           mime_type: z.string().min(1).optional().describe('Optional, for document only.'),
-        },
+        }),
         annotations: sendAnnotations,
       },
       async ({ kind, to, url, caption, filename, mime_type }) => {
@@ -421,12 +430,12 @@ export function createServer(config: Config, deps: ServerDeps = {}): McpServer {
           'true. Votes come back to the channel\'s webhook as poll_vote messages, by option name, and appear in ' +
           'read_messages. Counts as one message against the daily message allowance (sandbox channels). ' +
           SEND_WARNING,
-        inputSchema: {
+        inputSchema: toolInput({
           to,
           question: z.string().min(1).max(255).describe('The question.'),
           options: z.array(z.string().min(1).max(100)).min(2).max(12).describe('The options, each different.'),
           multiple: z.boolean().optional().describe('Let a voter choose more than one option. Default false.'),
-        },
+        }),
         annotations: sendAnnotations,
       },
       async ({ to, question, options, multiple }) => {
@@ -450,7 +459,7 @@ export function createServer(config: Config, deps: ServerDeps = {}): McpServer {
           'channel\'s earlier one. A message the channel has no record of answers 404 message_not_found. ' +
           'A reaction is a message on WhatsApp and counts as one against the daily message allowance (sandbox channels). ' +
           SEND_WARNING,
-        inputSchema: { message_id: messageId, emoji: z.string().min(1).describe('One emoji.') },
+        inputSchema: toolInput({ message_id: messageId, emoji: z.string().min(1).describe('One emoji.') }),
         annotations: sendAnnotations,
       },
       async ({ message_id, emoji }) => {
@@ -471,7 +480,7 @@ export function createServer(config: Config, deps: ServerDeps = {}): McpServer {
           'Remove this channel\'s reaction to a message. WhatsApp sends the removal as a message, so it counts ' +
           'as one against the daily message allowance (sandbox channels). ' +
           SEND_WARNING,
-        inputSchema: { message_id: messageId },
+        inputSchema: toolInput({ message_id: messageId }),
         annotations: sendAnnotations,
       },
       async ({ message_id }) => {
@@ -491,7 +500,7 @@ export function createServer(config: Config, deps: ServerDeps = {}): McpServer {
           'of 404 message_not_found. Deleting a message already deleted answers status already_revoked and sends ' +
           'nothing. The delete is a message on WhatsApp and counts as one against the daily message allowance (sandbox channels). ' +
           SEND_WARNING,
-        inputSchema: { message_id: messageId },
+        inputSchema: toolInput({ message_id: messageId }),
         annotations: sendAnnotations,
       },
       async ({ message_id }) => {

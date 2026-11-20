@@ -30,15 +30,15 @@ describe('list_chats', () => {
     expect(result.isError).toBeFalsy();
     expect(objectOf(result)).toEqual(body);
     expect(calls).toHaveLength(1);
-    // The edge drops query strings (API relay), so
+    // The edge drops query strings (internal/edge/passthrough.go relay), so
     // none is sent: a `limit` here would look honoured and never be.
     expectReadRequest(calls[0]!, `${BASE}/chats`);
   });
 });
 
 describe('channel_status', () => {
-  it('GETs {base}/sessions/{channel} only, by default', async () => {
-    const body = { name: 'chan_1', state: 'connected' };
+  it.each([{ capabilities: ['messages', 'groups', 'communities', 'contacts', 'lid_lookup', 'number_checks'] }, { capabilities: [] }])('preserves Capabilities %j in the default session response', async ({ capabilities }) => {
+    const body = { name: 'chan_1', state: 'CONNECTED', capabilities };
     const { fetch, calls } = fakeFetch({ body });
     const client = await connect(baseConfig(), fetch);
     const result = await client.callTool({ name: 'channel_status', arguments: {} });
@@ -48,7 +48,7 @@ describe('channel_status', () => {
   });
 
   it('with include_safety, also GETs /safety and returns both, all GETs', async () => {
-    const session = { name: 'chan_1', state: 'connected' };
+    const session = { name: 'chan_1', state: 'CONNECTED', capabilities: ['messages', 'groups', 'communities', 'contacts'] };
     const safety = { overall: 'good', indicators: [] };
     const { fetch, calls } = fakeFetch({ body: session }, { body: safety });
     const client = await connect(baseConfig(), fetch);
@@ -63,7 +63,7 @@ describe('channel_status', () => {
 describe('read_messages', () => {
   it('sends the chat JID LITERALLY in the path: `@` unencoded, no `%` anywhere', async () => {
     // The public edge matches the raw path and refuses any `%`
-    // so encodeURIComponent's
+    // (internal/edge/policy.go opAllowed), so encodeURIComponent's
     // `15551234567%40s.whatsapp.net` would be a 404 there.
     const body = { messages: [{ id: 'M1', text: 'hi' }], source: 'log' };
     const { fetch, calls } = fakeFetch({ body });
