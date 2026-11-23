@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1
+
+- Package author is now HelloHop <info@hellohop.app>. No code changes.
+
 ## 0.4.0
 
 - Upgrade Zod to ^4.6.6 (GHSA-mrhx-c7xc-m3w5) and use its native v4 schemas while preserving tool input schemas.
